@@ -375,7 +375,7 @@ function renderAsks(){
   const remaining = list.filter(a=>!state.answers[a.id]).length, lead=$("#leadLine");
   const first = RECIPIENT ? RECIPIENT + ", " : "";
   const txt = remaining===0 ? `All answered. Thank you${RECIPIENT?", "+RECIPIENT:""}.`
-    : remaining===list.length ? (state.filter==="mine" ? `${first}${remaining===1?"one thing needs":numWord(remaining)+" things need"} you this week.` : D.lead)
+    : remaining===list.length ? (state.filter==="mine" ? `${first}${remaining===1?"one thing needs":(first?numWord(remaining).toLowerCase():numWord(remaining))+" things need"} you this week.` : D.lead)
     : (remaining<=2 ? `${numWord(remaining)} left. You're nearly through.` : `${numWord(remaining)} to go.`);
   if (lead.textContent!==txt){ lead.textContent=txt; lead.style.animation="none"; lead.offsetHeight; lead.style.animation=""; }
   $("#leadSub").textContent = remaining===0 ? "Tap Send to Guetta below, or change any answer first." : D.leadSub;
