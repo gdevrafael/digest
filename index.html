@@ -179,6 +179,9 @@ html,body{margin:0}
 @keyframes load{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
 .offline{font-size:12px;color:var(--glow)}
 .hi{font-size:14px;color:var(--muted)}
+.xlink{color:var(--glow);text-decoration:none;border-bottom:1px solid rgba(240,184,102,.35);white-space:nowrap}
+.xlink:hover{border-bottom-color:var(--glow)}
+.askl{align-self:flex-start;font-size:14px}
 </style>
 </head>
 <body>
@@ -292,7 +295,7 @@ function renderShell(){
   <section aria-labelledby="h-new">
     <h2 id="h-new">What's new</h2>
     ${D.frame?`<div class="frame"><div class="safe"></div><span>${esc(D.frame.caption)}</span><span class="tc">${esc(D.frame.spec)}</span></div>`:""}
-    <div class="news"><ul>${D.news.map(n=>`<li><span class="when">${esc(n.when)}</span><p><strong>${esc(n.head)}</strong> ${esc(n.body)}</p></li>`).join("")}</ul></div>
+    <div class="news"><ul>${D.news.map(n=>`<li><span class="when">${esc(n.when)}</span><p><strong>${esc(n.head)}</strong> ${esc(n.body)}${n.link?` <a class="xlink" href="${esc(n.link.href)}" target="_blank" rel="noopener">${esc(n.link.label)} ↗</a>`:""}</p></li>`).join("")}</ul></div>
   </section>
   <section aria-labelledby="h-next">
     <h2 id="h-next">Coming up</h2>
@@ -314,7 +317,7 @@ function renderShell(){
 
 function renderRecord(s){
   let body = "";
-  if (s.items) body = `<ul>${s.items.map(i=>`<li>${esc(i)}</li>`).join("")}</ul>`;
+  if (s.items) body = `<ul>${s.items.map(i=>`<li>${typeof i==="object"&&i.href?`<a class="xlink" href="${esc(i.href)}" target="_blank" rel="noopener">${esc(i.t)} ↗</a>`:esc(i)}</li>`).join("")}</ul>`;
   if (s.groups) body = s.groups.map(([g,items])=>`<span class="label">${esc(g)}</span><ul>${items.map(i=>`<li>${esc(i)}</li>`).join("")}</ul>`).join("");
   if (s.kv) body = `<div class="kv">${s.kv.map(([k,v])=>`<span>${esc(k)}</span><span>${esc(v)}</span>`).join("")}</div>`;
   if (s.budget){
@@ -366,7 +369,7 @@ function renderAsks(){
     const def = a.defaultLabel ? `<span class="default" title="If we don't hear back by then">${cd?`${esc(a.defaultLabel)} in <span data-cd>${cd}</span>`:esc(a.defaultLabel)}</span>` : "";
     card.innerHTML = `
       <div class="ask-top"><span class="who">For ${esc(a.who)}</span>${def}</div>
-      <div class="body"><h3>${esc(a.title)}</h3>${a.ctx?`<p class="ctx">${esc(a.ctx)}</p>`:""}${opts}${note}</div>
+      <div class="body"><h3>${esc(a.title)}</h3>${a.ctx?`<p class="ctx">${esc(a.ctx)}</p>`:""}${a.link?`<a class="xlink askl" href="${esc(a.link.href)}" target="_blank" rel="noopener">${esc(a.link.label)} ↗</a>`:""}${opts}${note}</div>
       <div class="done-line"><span class="check">✓</span><span class="ans"><b style="font-weight:500">${esc(a.title.split(/[?,:]/)[0])}</b> — ${esc(answerLabel(a))}</span><button type="button" data-change="1">Change</button></div>`;
     box.appendChild(card);
   });
