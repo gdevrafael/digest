@@ -1303,10 +1303,11 @@ html.narrow .gai{font-size:8px;padding:2px 6px;left:6px;top:5px;transform:scale(
   var TOKEN=new URLSearchParams(location.search).get("d")||document.documentElement.getAttribute("data-tk")||"";
   var DID=document.documentElement.getAttribute("data-did")||"pitch";
   function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
-  var NAMEK="gs-pitch-name", QK="gs-pitch-q-"+DID;
-  var name=ls(NAMEK)||"";
-  function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,24)||"guest"}
-  function NK(){return "gs-pitch-notes-"+DID+"-"+slug(name)}
+  var NAMEK="gs-pitch-name", MAILK="gs-pitch-email", QK="gs-pitch-q-"+DID;
+  var mail=ls(MAILK)||""; var name=mail?(ls(NAMEK)||""):"";
+  function slug(s){return String(s).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,48)||"guest"}
+  function whoKey(){return slug(mail||name)}
+  function NK(){return "gs-pitch-notes-"+DID+"-"+whoKey()}
   function q(){try{return JSON.parse(ls(QK)||"[]")}catch(e){return[]}}
   function setQ(a){ls(QK,JSON.stringify(a))}
   function post(p){
@@ -1323,11 +1324,11 @@ html.narrow .gai{font-size:8px;padding:2px 6px;left:6px;top:5px;transform:scale(
   function status(t){if(!st)return; st.textContent=t; st.style.opacity=1; clearTimeout(stT); stT=setTimeout(function(){st.style.opacity=0},2200)}
   function label(key){var o=(window.pitch&&window.pitch.order?window.pitch.order():[]).filter(function(x){return x.key===key})[0];return o?o.label:key}
   function saveLocal(){var N=window.pitch?window.pitch.notes:{};ls(NK(),JSON.stringify(N))}
-  function payload(key,text){return {action:"answer",qid:(label(key).split(" · ")[0]||"slide")+"|"+key+"~"+slug(name),value:name,note:(label(key)+": "+text).slice(0,2000)}}
+  function payload(key,text){return {action:"answer",qid:(label(key).split(" · ")[0]||"slide")+"|"+key+"~"+whoKey(),value:name+" <"+mail+">",note:(label(key)+": "+text).slice(0,2000)}}
   var timers={};
   function queueSend(key,text){clearTimeout(timers[key]);timers[key]=setTimeout(function(){send(payload(key,text))},1200)}
   function restore(){
-    if(!name||!window.pitch)return; var saved={};try{saved=JSON.parse(ls(NK())||"{}")}catch(e){}
+    if(!name||!mail||!window.pitch)return; var saved={};try{saved=JSON.parse(ls(NK())||"{}")}catch(e){}
     Object.keys(saved).forEach(function(k){if(saved[k]&&!window.pitch.notes[k])window.pitch.notes[k]=saved[k]});
     var ta=document.getElementById("slideNote"),ord=window.pitch.order(),ticks=document.getElementById("dTicks");
     ord.forEach(function(o,i){var b=ticks&&ticks.children[i];if(b)b.classList.toggle("has-note",!!(window.pitch.notes[o.key]||"").trim())});
@@ -1338,24 +1339,25 @@ html.narrow .gai{font-size:8px;padding:2px 6px;left:6px;top:5px;transform:scale(
     var ta=document.getElementById("slideNote"); if(!ta){return setTimeout(init,200)}
     var nb=ta.parentNode;
     var who=document.createElement("div"); who.className="who";
-    who.innerHTML='<span>Who\'s commenting?</span><input id="whoName" type="text" maxlength="40" placeholder="Your name" autocomplete="name"><button type="button" id="whoOk">OK</button>';
+    who.innerHTML='<span>Who\'s commenting?</span><input id="whoName" type="text" maxlength="40" placeholder="Your name" autocomplete="name"><input id="whoMail" type="email" maxlength="80" placeholder="Your email" autocomplete="email" inputmode="email"><button type="button" id="whoOk">OK</button>';
     nb.insertBefore(who,ta);
     st=document.createElement("span"); st.className="nsync"; st.setAttribute("aria-live","polite"); nb.appendChild(st);
     var tag=document.createElement("button"); tag.type="button"; tag.className="whoTag"; nb.appendChild(tag);
-    function showTag(){tag.textContent=name?("Notes as "+name+" · change"):"";tag.style.display=name?"":"none"}
+    function showTag(){tag.textContent=(name&&mail)?("Notes as "+name+" · change"):"";tag.style.display=(name&&mail)?"":"none"}
     showTag();
-    var nameIn=who.querySelector("input");
-    function ask(){who.classList.add("show");nameIn.value=name;setTimeout(function(){nameIn.focus()},30)}
-    function setName(){var v=nameIn.value.trim();if(!v){nameIn.focus();return}
-      var prev=name; name=v; ls(NAMEK,name); who.classList.remove("show"); showTag();
-      if(prev!==name&&window.pitch){window.pitch.notes={}; ta.value="";}
+    var nameIn=who.querySelector("#whoName"), mailIn=who.querySelector("#whoMail");
+    function ask(){who.classList.add("show");nameIn.value=name;mailIn.value=mail;setTimeout(function(){nameIn.focus()},30)}
+    function setName(){var v=nameIn.value.trim(),m=mailIn.value.trim();if(!v){nameIn.focus();return}
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)){mailIn.focus();mailIn.classList.add("bad");return} mailIn.classList.remove("bad");
+      var prev=whoKey(); name=v; mail=m.toLowerCase(); ls(NAMEK,name); ls(MAILK,mail); who.classList.remove("show"); showTag();
+      if(prev!==whoKey()&&window.pitch){window.pitch.notes={}; ta.value="";}
       restore(); ta.focus()}
     who.querySelector("button").onclick=setName;
-    nameIn.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();setName()}});
+    [nameIn,mailIn].forEach(function(el){el.addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();if(el===nameIn&&!mailIn.value.trim())mailIn.focus();else setName()}})});
     tag.onclick=ask;
-    ta.addEventListener("focus",function(){if(!name)ask()});
+    ta.addEventListener("focus",function(){if(!name||!mail)ask()});
     ta.addEventListener("input",function(){
-      if(!name){ask();return}
+      if(!name||!mail){ask();return}
       var ord=window.pitch.order(),on=document.querySelector("#deck .slide.on"),idx=on?[].indexOf.call(on.parentNode.querySelectorAll(".slide"),on):-1;
       var o=ord[idx]; if(!o)return; saveLocal(); queueSend(o.key,ta.value);
     });
@@ -1368,7 +1370,7 @@ html.narrow .gai{font-size:8px;padding:2px 6px;left:6px;top:5px;transform:scale(
         Object.keys(timers).forEach(function(k){clearTimeout(timers[k])});
         var P=window.pitch, jobs=[];
         P.order().forEach(function(o){var t=(P.notes[o.key]||"").trim();if(t)jobs.push(send(payload(o.key,t)))});
-        jobs.push(send({action:"answer",qid:"direction~"+slug(name),value:name,note:"Direction: "+(P.pick?(document.querySelector('#picks .pick[data-v="'+P.pick+'"]')||{}).textContent||P.pick:"(none chosen)")}));
+        jobs.push(send({action:"answer",qid:"direction~"+whoKey(),value:name+" <"+mail+">",note:"Direction: "+(P.pick?(document.querySelector('#picks .pick[data-v="'+P.pick+'"]')||{}).textContent||P.pick:"(none chosen)")}));
         var s=document.getElementById("sendState");
         if(s)s.textContent="Sending…";
         Promise.all(jobs).then(function(r){
@@ -1382,9 +1384,11 @@ html.narrow .gai{font-size:8px;padding:2px 6px;left:6px;top:5px;transform:scale(
 })();
 </script>
 <style>
-#notebar .who{display:none;align-items:center;gap:8px;font-size:13px;color:var(--t-mute,#9AA0A6)}
+#notebar .who{display:none;align-items:center;gap:8px;font-size:13px;color:var(--t-mute,#9AA0A6);flex-wrap:wrap}
+#notebar .who input.bad{border-color:#EA4335}
+@media (max-width:600px){#notebar .who span{width:100%}}
 #notebar .who.show{display:flex}
-#notebar .who input{flex:1;min-width:0;background:var(--leaf,#0A0F1A);border:2px solid var(--rule,#263548);border-radius:4px;color:var(--ink,#F0F4FA);font:14px/1.3 inherit;padding:4px 8px}
+#notebar .who input{flex:1 1 120px;min-width:0;background:var(--leaf,#0A0F1A);border:2px solid var(--rule,#263548);border-radius:4px;color:var(--ink,#F0F4FA);font:14px/1.3 inherit;padding:4px 8px}
 #notebar .who button{background:#3186FF;border:0;border-radius:4px;color:#fff;font:600 13px/1 inherit;padding:7px 12px;cursor:pointer}
 #notebar .nb{position:relative}
 #notebar .nsync{position:absolute;right:12px;top:-18px;font-size:11px;color:#81C995;opacity:0;transition:opacity .3s;pointer-events:none}
